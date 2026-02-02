@@ -5,7 +5,7 @@
     {
       "chipFamily": "ESP32-C3",
       "ota": {
-        "md5": "1d35d96bdf9fcdc629c83ca",
+        "md5": "ddaf1d35d96bdf9fcdc629c83ca",
         "path": "https://github.com/FluxOpenHome/NightLight/releases/download/v1.0.1/100-flux-night-light.ota.bin",
         "release_url": "https://github.com/FluxOpenHome/NightLight/releases/tag/v1.0.1",
         "summary": "Update 1.0.1 - Restore Defaults on loss of power."
