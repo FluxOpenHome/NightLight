@@ -4,7 +4,7 @@
 substitutions:
   name: "flux-night-light"
   friendly_name: "Flux Night Light"
-  software_version: "1.0.4"
+  software_version: "1.0.5"
 
 esphome:
   name: "${name}"
