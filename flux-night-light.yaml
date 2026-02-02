@@ -4,7 +4,7 @@
 substitutions:
   name: "flux-night-light"
   friendly_name: "Flux Night Light"
-  software_version: "1.0.1"
+  software_version: "1.0.3"
 
 esphome:
   name: "${name}"
@@ -17,7 +17,7 @@ esphome:
     priority: -100
     then:
       - lambda: |-
-          auto call = id(neopixel_light).turn_on();
+          auto call = id(led_array).turn_on();
           call.set_brightness(id(saved_brightness));
           call.set_rgb(id(saved_red), id(saved_green), id(saved_blue));
           int idx = id(saved_effect_index);
@@ -32,6 +32,7 @@ esphome:
             case 8: call.set_effect("Addressable Random Twinkle"); break;
             case 9: call.set_effect("Addressable Fireworks"); break;
             case 10: call.set_effect("Addressable Flicker"); break;
+            case 11: call.set_effect("Pulse"); break;
             default: call.set_effect("None"); break;
           }
           call.perform();
@@ -149,7 +150,7 @@ text_sensor:
 
 light:
   - platform: esp32_rmt_led_strip
-    id: neopixel_light
+    id: led_array
     name: "LED Array"
     pin: GPIO10
     num_leds: 16
@@ -159,7 +160,7 @@ light:
     on_state:
       - lambda: |-
           // Save effect
-          std::string effect = id(neopixel_light).get_effect_name();
+          std::string effect = id(led_array).get_effect_name();
           int idx = 0;
           if (effect == "Random") idx = 1;
           else if (effect == "Strobe") idx = 2;
@@ -171,25 +172,61 @@ light:
           else if (effect == "Addressable Random Twinkle") idx = 8;
           else if (effect == "Addressable Fireworks") idx = 9;
           else if (effect == "Addressable Flicker") idx = 10;
+          else if (effect == "Pulse") idx = 11;
           if (id(saved_effect_index) != idx) {
             id(saved_effect_index) = idx;
           }
           // Save color and brightness
           float r, g, b;
-          id(neopixel_light).current_values_as_rgb(&r, &g, &b);
-          float br = id(neopixel_light).current_values.get_brightness();
+          id(led_array).current_values_as_rgb(&r, &g, &b);
+          float br = id(led_array).current_values.get_brightness();
           if (id(saved_red) != r) id(saved_red) = r;
           if (id(saved_green) != g) id(saved_green) = g;
           if (id(saved_blue) != b) id(saved_blue) = b;
           if (id(saved_brightness) != br) id(saved_brightness) = br;
     effects:
+      - pulse:
+          name: "Pulse"
+          transition_length: 2s
+          update_interval: 2s
+          min_brightness: 20%
+          max_brightness: 100%
       - random:
+          name: "Random"
+          transition_length: 2.5s
+          update_interval: 3s
       - strobe:
+          name: "Strobe"
       - flicker:
+          name: "Flicker"
+          alpha: 95%
+          intensity: 2.5%
       - addressable_rainbow:
+          name: "Addressable Rainbow"
+          speed: 10
+          width: 50
       - addressable_color_wipe:
+          name: "Addressable Color Wipe"
+          add_led_interval: 100ms
+          reverse: false
       - addressable_scan:
+          name: "Addressable Scan"
+          move_interval: 100ms
+          scan_width: 1
       - addressable_twinkle:
+          name: "Addressable Twinkle"
+          twinkle_probability: 5%
+          progress_interval: 4ms
       - addressable_random_twinkle:
+          name: "Addressable Random Twinkle"
+          twinkle_probability: 5%
+          progress_interval: 32ms
       - addressable_fireworks:
+          name: "Addressable Fireworks"
+          spark_probability: 10%
+          use_random_color: true
+          fade_out_rate: 120
       - addressable_flicker:
+          name: "Addressable Flicker"
+          intensity: 5%
+          update_interval: 16ms
