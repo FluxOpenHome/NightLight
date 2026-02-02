@@ -5,7 +5,7 @@
     {
       "chipFamily": "ESP32-C3",
       "ota": {
-        "md5": "b3fa4bdb065968408630a5ffe28637fc",
+        "md5": "7a053b463b15661f930ab5dbb9a7efde",
         "path": "https://github.com/FluxOpenHome/NightLight/releases/download/v1.0.3/103-flux-night-light.ota.bin",
         "release_url": "https://github.com/FluxOpenHome/NightLight/releases/tag/v1.0.3",
         "summary": "Update 1.0.3 - Added Effect Controls"
