@@ -1,0 +1,118 @@
+# Made for ESPHome compliant configuration
+# Flux Night Light - 16 LED NeoPixel Ring
+
+substitutions:
+  name: "flux-night-light"
+  friendly_name: "Flux Night Light"
+  software_version: "1.0.1"
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  name_add_mac_suffix: true
+  project:
+    name: "flux_open_home.night_light"
+    version: "${software_version}"
+
+esp32:
+  board: esp32-c3-devkitm-1
+  framework:
+    type: esp-idf
+
+logger:
+  id: logger_component
+
+api:
+  id: api_server
+
+ota:
+  - id: ota_component
+    platform: esphome
+  - id: ota_http_request
+    platform: http_request
+
+http_request:
+  id: http_request_component
+  follow_redirects: true
+  timeout: 30s
+  verify_ssl: true
+
+update:
+  - platform: http_request
+    id: firmware_update
+    name: "Firmware Update"
+    source: https://raw.githubusercontent.com/FluxOpenHome/NightLight/main/manifest.json
+
+dashboard_import:
+  package_import_url: github://FluxOpenHome/NightLight/flux-night-light.yaml@main
+  import_full_config: true
+
+wifi:
+  id: wifi_component
+  ap:
+    ssid: "${name}"
+    password: "12345678"
+
+captive_portal:
+  id: captive_portal_component
+
+esp32_improv:
+  id: esp32_improv_component
+  authorizer: none
+
+improv_serial:
+  id: improv_serial_component
+  next_url: http://{{ip_address}}
+
+web_server:
+  id: web_server_component
+  port: 80
+
+button:
+  - platform: restart
+    id: restart_button
+    name: "Restart"
+
+sensor:
+  - platform: uptime
+    id: uptime_sensor
+    name: "Uptime"
+
+  - platform: wifi_signal
+    id: wifi_signal_sensor
+    name: "WiFi Signal"
+    update_interval: 60s
+
+text_sensor:
+  - platform: version
+    id: esphome_version
+    name: "ESPHome Version"
+
+  - platform: wifi_info
+    ip_address:
+      id: wifi_ip_address
+      name: "IP Address"
+    ssid:
+      id: wifi_ssid_info
+      name: "Connected SSID"
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: neopixel_light
+    name: "LED Array"
+    pin: GPIO10
+    num_leds: 16
+    rgb_order: GRB
+    chipset: ws2812
+    restore_mode: RESTORE_DEFAULT_ON
+    effects:
+      - random:
+      - strobe:
+      - flicker:
+      - addressable_rainbow:
+      - addressable_color_wipe:
+      - addressable_scan:
+      - addressable_twinkle:
+      - addressable_random_twinkle:
+      - addressable_fireworks:
+      - addressable_flicker:
