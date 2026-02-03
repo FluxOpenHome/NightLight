@@ -4,7 +4,10 @@
 substitutions:
   name: "flux-night-light"
   friendly_name: "Flux Night Light"
-  software_version: "1.0.5"
+  software_version: "1.1.0"
+
+packages:
+  custom_effects: !include effects.yaml
 
 esphome:
   name: "${name}"
@@ -35,6 +38,12 @@ esphome:
             case 11: call.set_effect("Pulse"); break;
             case 12: call.set_effect("Fire"); break;
             case 13: call.set_effect("Flux Logo"); break;
+            case 14: call.set_effect("Gold Glitter"); break;
+            case 15: call.set_effect("Lightning Storm"); break;
+            case 16: call.set_effect("Sunrise"); break;
+            case 17: call.set_effect("Wave"); break;
+            case 18: call.set_effect("Wave Fade"); break;
+            case 19: call.set_effect("Wave Comp"); break;
             default: call.set_effect("None"); break;
           }
           call.perform();
@@ -176,6 +185,12 @@ light:
           else if (effect == "Pulse") idx = 11;
           else if (effect == "Fire") idx = 12;
           else if (effect == "Flux Logo") idx = 13;
+          else if (effect == "Gold Glitter") idx = 14;
+          else if (effect == "Lightning Storm") idx = 15;
+          else if (effect == "Sunrise") idx = 16;
+          else if (effect == "Wave") idx = 17;
+          else if (effect == "Wave Fade") idx = 18;
+          else if (effect == "Wave Comp") idx = 19;
           if (id(saved_effect_index) != idx) {
             id(saved_effect_index) = idx;
           }
@@ -233,91 +248,3 @@ light:
           name: "Addressable Flicker"
           intensity: 5%
           update_interval: 16ms
-      - addressable_lambda:
-          name: "Fire"
-          update_interval: 30ms
-          lambda: |-
-            // Helper: random int in [min, max)
-            auto rng = [](int mn, int mx) -> int {
-              return mn + (int)(esp_random() % (uint32_t)(mx - mn));
-            };
-            static uint8_t heat[16] = {};
-            // Cool down each cell
-            for (int i = 0; i < it.size(); i++) {
-              int cooldown = rng(0, 40);
-              heat[i] = (cooldown >= heat[i]) ? 0 : heat[i] - cooldown;
-            }
-            // Heat diffuses upward
-            for (int i = it.size() - 1; i >= 2; i--) {
-              heat[i] = (heat[i - 1] + heat[i - 2] + heat[i - 2]) / 3;
-            }
-            // Random sparks near the base
-            if (rng(0, 255) < 120) {
-              int pos = rng(0, 3);
-              int val = heat[pos] + rng(160, 255);
-              heat[pos] = (val > 255) ? 255 : val;
-            }
-            // Map heat to color (black -> red -> orange -> yellow -> white)
-            for (int i = 0; i < it.size(); i++) {
-              uint8_t t = heat[i];
-              uint8_t r = 0, g = 0, b = 0;
-              if (t > 0) {
-                if (t <= 85) {
-                  r = t * 3;
-                } else if (t <= 170) {
-                  r = 255;
-                  g = (t - 85) * 3;
-                } else {
-                  r = 255;
-                  g = 255;
-                  b = (t - 170) * 3;
-                }
-              }
-              it[i] = Color(r, g, b);
-            }
-      - addressable_lambda:
-          name: "Flux Logo"
-          update_interval: 50ms
-          lambda: |-
-            // Flux logo on 4x4 snake grid
-            // LED layout (snake pattern):
-            //   Row 4: 16 15 14 13   (right to left)
-            //   Row 3:  9 10 11 12   (left to right)
-            //   Row 2:  8  7  6  5   (right to left)
-            //   Row 1:  1  2  3  4   (left to right)
-            // Logo pixels (1-indexed): 1, 2, 3, 4, 6, 7, 10, 11, 13, 16
-            static const int logo[] = {0, 1, 3, 5, 6, 9, 10, 12, 15};  // 0-indexed
-            static const int logo_size = 10;
-            static int step = 0;
-            static bool drawing = true;
-
-            it.all() = Color(0, 0, 0);
-
-            if (drawing) {
-              // Draw LEDs one at a time
-              int show = std::min(step + 1, logo_size);
-              for (int i = 0; i < show; i++) {
-                it[logo[i]] = current_color;
-              }
-              step++;
-              if (step >= logo_size + 30) {  // Hold for 30 frames after complete
-                drawing = false;
-                step = 0;
-              }
-            } else {
-              // Fade out
-              float fade = 1.0 - ((float)step / 20.0);
-              if (fade < 0) fade = 0;
-              for (int i = 0; i < logo_size; i++) {
-                it[logo[i]] = Color(
-                  current_color.r * fade,
-                  current_color.g * fade,
-                  current_color.b * fade
-                );
-              }
-              step++;
-              if (step >= 25) {  // Pause in darkness then restart
-                drawing = true;
-                step = 0;
-              }
-            }

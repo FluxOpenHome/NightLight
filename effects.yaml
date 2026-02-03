@@ -1,0 +1,305 @@
+# Custom LED Effects for Flux Night Light
+# Included as a package in flux-night-light.yaml
+# Effects are merged with the built-in effects via ESPHome package concatenation
+# All effects use addressable_lambda for ESP-IDF compatibility
+
+light:
+  - id: !extend led_array
+    effects:
+      - addressable_lambda:
+          name: "Fire"
+          update_interval: 30ms
+          lambda: |-
+            auto rng = [](int mn, int mx) -> int {
+              return mn + (int)(esp_random() % (uint32_t)(mx - mn));
+            };
+            static uint8_t heat[16] = {};
+            // Cool down each cell
+            for (int i = 0; i < it.size(); i++) {
+              int cooldown = rng(0, 40);
+              heat[i] = (cooldown >= heat[i]) ? 0 : heat[i] - cooldown;
+            }
+            // Heat diffuses upward
+            for (int i = it.size() - 1; i >= 2; i--) {
+              heat[i] = (heat[i - 1] + heat[i - 2] + heat[i - 2]) / 3;
+            }
+            // Random sparks near the base
+            if (rng(0, 255) < 120) {
+              int pos = rng(0, 3);
+              int val = heat[pos] + rng(160, 255);
+              heat[pos] = (val > 255) ? 255 : val;
+            }
+            // Map heat to color (black -> red -> orange -> yellow -> white)
+            for (int i = 0; i < it.size(); i++) {
+              uint8_t t = heat[i];
+              uint8_t r = 0, g = 0, b = 0;
+              if (t > 0) {
+                if (t <= 85) {
+                  r = t * 3;
+                } else if (t <= 170) {
+                  r = 255;
+                  g = (t - 85) * 3;
+                } else {
+                  r = 255;
+                  g = 255;
+                  b = (t - 170) * 3;
+                }
+              }
+              it[i] = Color(r, g, b);
+            }
+
+      - addressable_lambda:
+          name: "Flux Logo"
+          update_interval: 50ms
+          lambda: |-
+            // Flux logo on 4x4 snake grid
+            // LED layout (snake pattern):
+            //   Row 4: 16 15 14 13   (right to left)
+            //   Row 3:  9 10 11 12   (left to right)
+            //   Row 2:  8  7  6  5   (right to left)
+            //   Row 1:  1  2  3  4   (left to right)
+            // Logo pixels (1-indexed): 1, 2, 4, 6, 7, 10, 11, 13, 16
+            static const int logo[] = {0, 1, 3, 5, 6, 9, 10, 12, 15};
+            static const int logo_size = 9;
+            static int step = 0;
+            static bool drawing = true;
+
+            it.all() = Color(0, 0, 0);
+
+            if (drawing) {
+              int show = std::min(step + 1, logo_size);
+              for (int i = 0; i < show; i++) {
+                it[logo[i]] = current_color;
+              }
+              step++;
+              if (step >= logo_size + 30) {
+                drawing = false;
+                step = 0;
+              }
+            } else {
+              float fade = 1.0 - ((float)step / 20.0);
+              if (fade < 0) fade = 0;
+              for (int i = 0; i < logo_size; i++) {
+                it[logo[i]] = Color(
+                  current_color.r * fade,
+                  current_color.g * fade,
+                  current_color.b * fade
+                );
+              }
+              step++;
+              if (step >= 25) {
+                drawing = true;
+                step = 0;
+              }
+            }
+
+      - addressable_lambda:
+          name: "Gold Glitter"
+          update_interval: 18ms
+          lambda: |-
+            // Gold base with random white sparkles
+            static int sparkle_timer = 0;
+            static int sparkle_led = -1;
+
+            // Set all LEDs to gold
+            for (int i = 0; i < it.size(); i++) {
+              it[i] = Color(218, 165, 32);
+            }
+
+            // Add random white sparkle
+            if (sparkle_timer == 0) {
+              sparkle_led = esp_random() % it.size();
+              it[sparkle_led] = Color(255, 255, 255);
+              sparkle_timer = 1;
+            } else {
+              sparkle_timer++;
+              if (sparkle_timer >= 10) {
+                sparkle_timer = 0;
+              }
+            }
+
+      - addressable_lambda:
+          name: "Lightning Storm"
+          update_interval: 5ms
+          lambda: |-
+            // Blue ambient glow with random lightning flashes
+            static float speed_multiplier = 0.003;
+            static uint32_t lightning_end = 0;
+            static uint32_t lightning_wait = 0;
+            static uint32_t lightning_modifier = 0;
+
+            for (int led_index = 0; led_index < it.size(); led_index++) {
+              uint32_t elapsed = millis() + (uint32_t)(led_index * 650);
+
+              uint8_t b = (uint8_t)((pow(sin((elapsed * speed_multiplier) / 4.0), 3.0) + 1.0) * 80.0 + 90.0);
+              uint8_t r, g;
+
+              if (lightning_end == 0) {
+                // Normal ambient blue glow
+                r = (uint8_t)((sin((elapsed * speed_multiplier) / 5.0) + 1.0) * 40.0);
+                g = (uint8_t)(pow(sin(((elapsed * speed_multiplier) / 8.0) + 3.14159 / 2.0), 4.0) * 50.0);
+
+                if (millis() >= lightning_wait && (esp_random() % 1500) == 1) {
+                  lightning_end = millis() + (esp_random() % 400 + 100);
+                  lightning_modifier = esp_random() % 15 + 20;
+                }
+              } else {
+                // Lightning flash
+                r = g = (uint8_t)((sin((float)elapsed / lightning_modifier) + 1.0) * 60);
+
+                if (millis() >= lightning_end) {
+                  lightning_end = 0;
+                  lightning_wait = millis() + 3000;
+                }
+              }
+
+              it[led_index] = Color(r, g, b);
+            }
+
+      - addressable_lambda:
+          name: "Sunrise"
+          update_interval: 50ms
+          lambda: |-
+            // Gentle warm-up animation expanding from center outward
+            // Transitions from red -> orange -> warm white over ~20 minutes
+            static uint32_t start_time = 0;
+            const float duration = 1200000.0f;  // 20 minutes in ms
+
+            if (initial_run) {
+              start_time = millis();
+            }
+
+            float progress = (float)(millis() - start_time) / duration;
+            if (progress > 1.0f) progress = 1.0f;
+
+            float center = (it.size() - 1) / 2.0f;
+
+            for (int i = 0; i < it.size(); i++) {
+              float dist_factor = fabs((float)i - center) / center;
+              float val = (progress * 1.5f) - dist_factor;
+
+              if (val <= 0.0f) {
+                it[i] = Color(0, 0, 0);
+              } else {
+                if (val > 1.0f) val = 1.0f;
+
+                uint8_t r_out, g_out, b_out;
+
+                if (val < 0.5f) {
+                  // Red to orange phase
+                  float p = val * 2.0f;
+                  r_out = (uint8_t)(50 + 205 * p);
+                  g_out = (uint8_t)(120 * p);
+                  b_out = 0;
+                } else {
+                  // Orange to warm white phase
+                  float p = (val - 0.5f) * 2.0f;
+                  r_out = 255;
+                  g_out = (uint8_t)(120 + 90 * p);
+                  b_out = (uint8_t)(90 * p);
+                }
+
+                it[i] = Color(r_out, g_out, b_out);
+              }
+            }
+
+      - addressable_lambda:
+          name: "Wave"
+          update_interval: 40ms
+          lambda: |-
+            // Traveling brightness wave using the selected color
+            static float wave_position = 0.0;
+            const int wave_width = 6;
+            const int wave_spacing = 10;
+            const float wave_speed = 0.5;
+
+            wave_position += wave_speed;
+            if (wave_position >= (wave_width + wave_spacing)) {
+              wave_position -= (wave_width + wave_spacing);
+            }
+
+            for (int i = 0; i < it.size(); i++) {
+              float pos_in_wave = fmod(i + wave_position, wave_width + wave_spacing);
+              float brightness = 0.0;
+              if (pos_in_wave < wave_width) {
+                brightness = 1.0 - (pos_in_wave / wave_width);
+              }
+
+              it[i] = Color(
+                (uint8_t)(current_color.r * brightness),
+                (uint8_t)(current_color.g * brightness),
+                (uint8_t)(current_color.b * brightness)
+              );
+            }
+
+      - addressable_lambda:
+          name: "Wave Fade"
+          update_interval: 40ms
+          lambda: |-
+            // Symmetric fade wave - softer "hump" shape
+            static float wave_position = 0.0;
+            const int wave_width = 6;
+            const int wave_spacing = 10;
+            const float wave_speed = 0.5;
+
+            wave_position += wave_speed;
+            if (wave_position >= (wave_width + wave_spacing)) {
+              wave_position -= (wave_width + wave_spacing);
+            }
+
+            for (int i = 0; i < it.size(); i++) {
+              float pos_in_wave = fmod(i + wave_position, wave_width + wave_spacing);
+              float brightness = 0.0;
+              if (pos_in_wave < wave_width) {
+                // Symmetric fade: bright in center, dark at edges
+                brightness = 1.0 - fabs((pos_in_wave / wave_width) * 2.0 - 1.0);
+              }
+
+              it[i] = Color(
+                (uint8_t)(current_color.r * brightness),
+                (uint8_t)(current_color.g * brightness),
+                (uint8_t)(current_color.b * brightness)
+              );
+            }
+
+      - addressable_lambda:
+          name: "Wave Comp"
+          update_interval: 75ms
+          lambda: |-
+            // Dual counter-traveling waves in complementary colors
+            static float wave_position = 0.0;
+            const int wave_width = 6;
+            const int wave_spacing = 10;
+            const float wave_speed = 0.5;
+
+            wave_position += wave_speed;
+            if (wave_position >= (wave_width + wave_spacing)) {
+              wave_position -= (wave_width + wave_spacing);
+            }
+
+            // Complementary color (inverted)
+            uint8_t comp_r = 255 - current_color.r;
+            uint8_t comp_g = 255 - current_color.g;
+            uint8_t comp_b = 255 - current_color.b;
+
+            for (int i = 0; i < it.size(); i++) {
+              // Forward wave
+              float fwd_pos = fmod(i + wave_position, wave_width + wave_spacing);
+              float fwd_brightness = 0.0;
+              if (fwd_pos < wave_width) {
+                fwd_brightness = 1.0 - (fwd_pos / wave_width);
+              }
+
+              // Backward wave (opposite direction)
+              float bwd_pos = fmod(it.size() - 1 - i + wave_position, wave_width + wave_spacing);
+              float bwd_brightness = 0.0;
+              if (bwd_pos < wave_width) {
+                bwd_brightness = 1.0 - (bwd_pos / wave_width);
+              }
+
+              uint8_t r = std::min(255, (int)(current_color.r * fwd_brightness + comp_r * bwd_brightness));
+              uint8_t g = std::min(255, (int)(current_color.g * fwd_brightness + comp_g * bwd_brightness));
+              uint8_t b = std::min(255, (int)(current_color.b * fwd_brightness + comp_b * bwd_brightness));
+
+              it[i] = Color(r, g, b);
+            }
