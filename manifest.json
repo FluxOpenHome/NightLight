@@ -1,15 +1,14 @@
 {
   "name": "Flux Night Light",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "builds": [
     {
       "chipFamily": "ESP32-C3",
       "ota": {
-        "md5": "c10eabd39ce3b806e1342f13632d9853",
-        "path": "https://github.com/FluxOpenHome/NightLight/releases/download/v1.1.0/110-flux-night-light.ota.bin",
-        "release_url": "https://github.com/FluxOpenHome/NightLight/releases/tag/v1.1.0",
-        "summary": "Update 1.1.0 - Added 6 new custom effects (Gold Glitter, Lightning Storm, Sunrise, Wave, Wave Fade, Wave Comp), moved custom effects to separate file"
-      }
+        "md5": "c08a7629e27ee7434744a47c5056c930",
+        "path": "https://github.com/FluxOpenHome/NightLight/releases/download/v1.1.1/111-flux-night-light.ota.bin",
+        "release_url": "https://github.com/FluxOpenHome/NightLight/releases/tag/v1.1.1",
+        "summary": "Update 1.1.1 - Mapped effects to correct LED array wiring"
     }
   ]
 }
