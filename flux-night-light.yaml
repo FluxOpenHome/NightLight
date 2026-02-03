@@ -83,7 +83,6 @@ wifi:
   id: wifi_component
   ap:
     ssid: "${name}"
-    password: "12345678"
 
 captive_portal:
   id: captive_portal_component

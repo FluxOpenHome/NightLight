@@ -1,14 +1,14 @@
 {
   "name": "Flux Night Light",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "builds": [
     {
       "chipFamily": "ESP32-C3",
       "ota": {
-        "md5": "ef5563abda1696f712b91e20b01eb71b",
-        "path": "https://github.com/FluxOpenHome/NightLight/releases/download/v1.0.5/105-flux-night-light.ota.bin",
-        "release_url": "https://github.com/FluxOpenHome/NightLight/releases/tag/v1.0.5",
-        "summary": "Update 1.0.5 - Added FLUX Logo Effect"
+        "md5": "fe337768de7436bd54e4df07c0ca453a",
+        "path": "https://github.com/FluxOpenHome/NightLight/releases/download/v1.0.6/106-flux-night-light.ota.bin",
+        "release_url": "https://github.com/FluxOpenHome/NightLight/releases/tag/v1.0.6",
+        "summary": "Update 1.0.6 - Removed hard coded password for Captive Portal"
       }
     }
   ]

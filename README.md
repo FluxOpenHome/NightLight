@@ -34,11 +34,10 @@ An open-source, ESPHome-powered night light built on the ESP32-C3 with a 16-LED 
 
 ## WiFi Setup
 
-On first boot, the device creates a fallback hotspot:
+On first boot, the device creates an open fallback hotspot:
 - **SSID:** `flux-night-light-XXXXXX`
-- **Password:** `12345678`
 
-Connect to this AP and use the captive portal to enter your WiFi credentials. Alternatively, use the Improv BLE or serial provisioning from the ESPHome dashboard.
+Connect to this AP (no password required) and use the captive portal to enter your WiFi credentials. Alternatively, use the Improv BLE or serial provisioning from the ESPHome dashboard.
 
 ## OTA Firmware Updates
 
