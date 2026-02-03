@@ -246,5 +246,5 @@ light:
           fade_out_rate: 120
       - addressable_flicker:
           name: "Addressable Flicker"
-          intensity: 5%
+          intensity: 15%
           update_interval: 16ms
