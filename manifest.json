@@ -9,6 +9,7 @@
         "path": "https://github.com/FluxOpenHome/NightLight/releases/download/v1.1.1/111-flux-night-light.ota.bin",
         "release_url": "https://github.com/FluxOpenHome/NightLight/releases/tag/v1.1.1",
         "summary": "Update 1.1.1 - Mapped effects to correct LED array wiring"
+      }
     }
   ]
 }
