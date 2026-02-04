@@ -2,10 +2,10 @@
 .DS_Store
 
 # ESPHome build artifacts
-.esphome/
+# .esphome/
 
 # Release binaries (use GitHub Releases instead)
-#releases/
+# releases/
 
 # ESPHome devices PR (belongs in esphome-devices fork)
 esphome-devices-pr/
