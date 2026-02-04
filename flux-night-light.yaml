@@ -4,7 +4,7 @@
 substitutions:
   name: "flux-night-light"
   friendly_name: "Flux Night Light"
-  software_version: "1.1.1"
+  software_version: "1.1.2"
 
 packages:
   custom_effects: !include effects.yaml
@@ -20,6 +20,12 @@ esphome:
     priority: -100
     then:
       - lambda: |-
+          if (!id(power_restore_on)) {
+            // User chose "Stay Off" — turn off and exit
+            auto call = id(led_array).turn_off();
+            call.perform();
+            return;
+          }
           auto call = id(led_array).turn_on();
           call.set_brightness(id(saved_brightness));
           call.set_rgb(id(saved_red), id(saved_green), id(saved_blue));
@@ -129,12 +135,16 @@ globals:
     type: float
     restore_value: yes
     initial_value: '1.0'
+  - id: power_restore_on
+    type: bool
+    restore_value: yes
+    initial_value: 'true'
 
 binary_sensor:
   - platform: gpio
     id: programming_button
     pin:
-      number: GPIO9
+      number: GPIO8
       mode: INPUT_PULLUP
       inverted: true
     filters:
@@ -181,6 +191,7 @@ binary_sensor:
             id(saved_green) = 1.0;
             id(saved_blue) = 1.0;
             id(saved_brightness) = 1.0;
+            id(power_restore_on) = true;
         # Factory reset (clears WiFi credentials and restarts)
         - button.press: factory_reset_button
 
@@ -216,6 +227,21 @@ text_sensor:
       id: wifi_ssid_info
       name: "Connected SSID"
 
+select:
+  - platform: template
+    id: power_restore_select
+    name: "Power Restore Behavior"
+    icon: "mdi:power-settings"
+    options:
+      - "Turn On"
+      - "Stay Off"
+    initial_option: "Turn On"
+    optimistic: true
+    restore_value: true
+    on_value:
+      - lambda: |-
+          id(power_restore_on) = (x == "Turn On");
+
 light:
   - platform: esp32_rmt_led_strip
     id: led_array
@@ -227,6 +253,10 @@ light:
     restore_mode: RESTORE_DEFAULT_ON
     on_state:
       - lambda: |-
+          // Only save state when the light is on — otherwise turning off
+          // would overwrite saved color/effect/brightness with blank values
+          if (!id(led_array).current_values.is_on()) return;
+
           // Save effect
           std::string effect = id(led_array).get_effect_name();
           int idx = 0;
