@@ -103,7 +103,7 @@ globals:
   - id: saved_effect_index
     type: int
     restore_value: yes
-    initial_value: '0'
+    initial_value: '13'
   - id: saved_red
     type: float
     restore_value: yes
@@ -119,7 +119,7 @@ globals:
   - id: saved_brightness
     type: float
     restore_value: yes
-    initial_value: '1.0'
+    initial_value: '0.4'
   - id: boot_complete
     type: bool
     restore_value: no
@@ -133,7 +133,7 @@ binary_sensor:
   - platform: gpio
     id: programming_button
     pin:
-      number: GPIO8
+      number: GPIO9
       mode: INPUT_PULLUP
       inverted: true
     filters:
@@ -175,11 +175,11 @@ binary_sensor:
         - delay: 500ms
         # Reset saved globals to defaults
         - lambda: |-
-            id(saved_effect_index) = 0;
+            id(saved_effect_index) = 13;
             id(saved_red) = 1.0;
             id(saved_green) = 1.0;
             id(saved_blue) = 1.0;
-            id(saved_brightness) = 1.0;
+            id(saved_brightness) = 0.4;
             id(power_restore_off) = false;
             auto call = id(power_restore_select).make_call();
             call.set_option("Turn On");
