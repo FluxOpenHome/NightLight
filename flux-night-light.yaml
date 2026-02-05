@@ -20,39 +20,21 @@ esphome:
     priority: -100
     then:
       - lambda: |-
-          if (!id(power_restore_on)) {
-            // User chose "Stay Off" — turn off and exit
-            auto call = id(led_array).turn_off();
+          // Global is available immediately from NVS — no delay needed.
+          if (!id(power_restore_off)) {
+            // User chose "Turn On" — turn on the light.
+            // on_turn_on will handle restoring effect/color/brightness.
+            auto call = id(led_array).make_call();
+            call.set_state(true);
             call.perform();
-            return;
           }
-          auto call = id(led_array).turn_on();
-          call.set_brightness(id(saved_brightness));
-          call.set_rgb(id(saved_red), id(saved_green), id(saved_blue));
-          int idx = id(saved_effect_index);
-          switch (idx) {
-            case 1: call.set_effect("Random"); break;
-            case 2: call.set_effect("Strobe"); break;
-            case 3: call.set_effect("Flicker"); break;
-            case 4: call.set_effect("Addressable Rainbow"); break;
-            case 5: call.set_effect("Addressable Color Wipe"); break;
-            case 6: call.set_effect("Addressable Scan"); break;
-            case 7: call.set_effect("Addressable Twinkle"); break;
-            case 8: call.set_effect("Addressable Random Twinkle"); break;
-            case 9: call.set_effect("Addressable Fireworks"); break;
-            case 10: call.set_effect("Addressable Flicker"); break;
-            case 11: call.set_effect("Pulse"); break;
-            case 12: call.set_effect("Fire"); break;
-            case 13: call.set_effect("Flux Logo"); break;
-            case 14: call.set_effect("Gold Glitter"); break;
-            case 15: call.set_effect("Lightning Storm"); break;
-            case 16: call.set_effect("Sunrise"); break;
-            case 17: call.set_effect("Wave"); break;
-            case 18: call.set_effect("Wave Fade"); break;
-            case 19: call.set_effect("Wave Comp"); break;
-            default: call.set_effect("None"); break;
-          }
-          call.perform();
+      - delay: 10s
+      - lambda: |-
+          // Mark boot complete after 10s. This gives enough time for
+          // HA API to reconnect and attempt (and fail) to restore state
+          // when "Stay Off" is selected. After this, user can freely
+          // control the light from HA.
+          id(boot_complete) = true;
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -114,6 +96,9 @@ web_server:
   id: web_server_component
   port: 80
 
+preferences:
+  flash_write_interval: 5s
+
 globals:
   - id: saved_effect_index
     type: int
@@ -135,10 +120,14 @@ globals:
     type: float
     restore_value: yes
     initial_value: '1.0'
-  - id: power_restore_on
+  - id: boot_complete
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: power_restore_off
     type: bool
     restore_value: yes
-    initial_value: 'true'
+    initial_value: 'false'
 
 binary_sensor:
   - platform: gpio
@@ -191,7 +180,10 @@ binary_sensor:
             id(saved_green) = 1.0;
             id(saved_blue) = 1.0;
             id(saved_brightness) = 1.0;
-            id(power_restore_on) = true;
+            id(power_restore_off) = false;
+            auto call = id(power_restore_select).make_call();
+            call.set_option("Turn On");
+            call.perform();
         # Factory reset (clears WiFi credentials and restarts)
         - button.press: factory_reset_button
 
@@ -240,7 +232,7 @@ select:
     restore_value: true
     on_value:
       - lambda: |-
-          id(power_restore_on) = (x == "Turn On");
+          id(power_restore_off) = (x == "Stay Off");
 
 light:
   - platform: esp32_rmt_led_strip
@@ -250,12 +242,57 @@ light:
     num_leds: 16
     rgb_order: GRB
     chipset: ws2812
-    restore_mode: RESTORE_DEFAULT_ON
-    on_state:
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: 100ms
       - lambda: |-
-          // Only save state when the light is on — otherwise turning off
-          // would overwrite saved color/effect/brightness with blank values
-          if (!id(led_array).current_values.is_on()) return;
+          // If boot hasn't completed and "Stay Off" is selected, reject
+          // any turn-on attempt (e.g., HA API restoring last known state).
+          // boot_complete stays false the entire session when "Stay Off",
+          // so this blocks ALL automatic turn-on attempts until the user
+          // explicitly changes the select to "Turn On" (which sets
+          // boot_complete = true via on_value).
+          if (!id(boot_complete) && id(power_restore_off)) {
+            auto off = id(led_array).make_call();
+            off.set_state(false);
+            off.perform();
+            return;
+          }
+          // Restore saved color, brightness, and effect
+          auto call = id(led_array).make_call();
+          call.set_brightness(id(saved_brightness));
+          call.set_rgb(id(saved_red), id(saved_green), id(saved_blue));
+          int idx = id(saved_effect_index);
+          switch (idx) {
+            case 1: call.set_effect("Random"); break;
+            case 2: call.set_effect("Strobe"); break;
+            case 3: call.set_effect("Flicker"); break;
+            case 4: call.set_effect("Addressable Rainbow"); break;
+            case 5: call.set_effect("Addressable Color Wipe"); break;
+            case 6: call.set_effect("Addressable Scan"); break;
+            case 7: call.set_effect("Addressable Twinkle"); break;
+            case 8: call.set_effect("Addressable Random Twinkle"); break;
+            case 9: call.set_effect("Addressable Fireworks"); break;
+            case 10: call.set_effect("Addressable Flicker"); break;
+            case 11: call.set_effect("Pulse"); break;
+            case 12: call.set_effect("Fire"); break;
+            case 13: call.set_effect("Flux Logo"); break;
+            case 14: call.set_effect("Gold Glitter"); break;
+            case 15: call.set_effect("Lightning Storm"); break;
+            case 16: call.set_effect("Sunrise"); break;
+            case 17: call.set_effect("Wave"); break;
+            case 18: call.set_effect("Wave Fade"); break;
+            case 19: call.set_effect("Wave Comp"); break;
+            default: break;
+          }
+          call.perform();
+    on_state:
+      - delay: 250ms
+      - lambda: |-
+          // 250ms delay ensures on_turn_on (100ms) has fully finished
+          // restoring saved state before we save anything.
+          // Only save state when the light is on.
+          if (!id(led_array).remote_values.is_on()) return;
 
           // Save effect
           std::string effect = id(led_array).get_effect_name();
@@ -279,17 +316,16 @@ light:
           else if (effect == "Wave") idx = 17;
           else if (effect == "Wave Fade") idx = 18;
           else if (effect == "Wave Comp") idx = 19;
-          if (id(saved_effect_index) != idx) {
-            id(saved_effect_index) = idx;
-          }
-          // Save color and brightness
-          float r, g, b;
-          id(led_array).current_values_as_rgb(&r, &g, &b);
-          float br = id(led_array).current_values.get_brightness();
-          if (id(saved_red) != r) id(saved_red) = r;
-          if (id(saved_green) != g) id(saved_green) = g;
-          if (id(saved_blue) != b) id(saved_blue) = b;
-          if (id(saved_brightness) != br) id(saved_brightness) = br;
+          id(saved_effect_index) = idx;
+          // Save color and brightness from remote_values
+          float r = id(led_array).remote_values.get_red();
+          float g = id(led_array).remote_values.get_green();
+          float b = id(led_array).remote_values.get_blue();
+          float br = id(led_array).remote_values.get_brightness();
+          id(saved_red) = r;
+          id(saved_green) = g;
+          id(saved_blue) = b;
+          id(saved_brightness) = br;
     effects:
       - pulse:
           name: "Pulse"

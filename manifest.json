@@ -5,7 +5,7 @@
     {
       "chipFamily": "ESP32-C3",
       "ota": {
-        "md5": "1213e507c30be42123e4854e36337528",
+        "md5": "7475655bf5365adc51daf413e762ff4c",
         "path": "https://github.com/FluxOpenHome/NightLight/releases/download/v1.1.2/112-flux-night-light.ota.bin",
         "release_url": "https://github.com/FluxOpenHome/NightLight/releases/tag/v1.1.2",
         "summary": "Update 1.1.2 - Mapped effects to correct LED array wiring"
