@@ -1,0 +1,242 @@
+blueprint:
+  name: Flux Night Light Clock (12-Hour)
+  description: >
+    Turn 12 Flux Night Lights into a working 12-hour analog clock! Mount each
+    light at a clock-hour position on a circular board. The automation updates
+    every minute, illuminating the hour and minute positions with your chosen
+    colors. Minutes are mapped to the nearest 5-minute interval — each light
+    covers a 5-minute arc, just like a real analog clock face.
+
+
+    When both hands overlap on the same light, a configurable overlap color is
+    shown. Inactive lights can be turned off completely or set to a dim
+    background color so the full clock face remains visible.
+  domain: automation
+  author: Flux Open Home
+  source_url: https://github.com/fluxopenhome/ha-blueprints
+  input:
+    # ── Clock Face Lights ─────────────────────────────────────────────
+    light_12:
+      name: "12 O'Clock (Top)"
+      description: "Light at the 12 o'clock position"
+      selector:
+        entity:
+          domain: light
+    light_1:
+      name: "1 O'Clock"
+      selector:
+        entity:
+          domain: light
+    light_2:
+      name: "2 O'Clock"
+      selector:
+        entity:
+          domain: light
+    light_3:
+      name: "3 O'Clock (Right)"
+      selector:
+        entity:
+          domain: light
+    light_4:
+      name: "4 O'Clock"
+      selector:
+        entity:
+          domain: light
+    light_5:
+      name: "5 O'Clock"
+      selector:
+        entity:
+          domain: light
+    light_6:
+      name: "6 O'Clock (Bottom)"
+      selector:
+        entity:
+          domain: light
+    light_7:
+      name: "7 O'Clock"
+      selector:
+        entity:
+          domain: light
+    light_8:
+      name: "8 O'Clock"
+      selector:
+        entity:
+          domain: light
+    light_9:
+      name: "9 O'Clock (Left)"
+      selector:
+        entity:
+          domain: light
+    light_10:
+      name: "10 O'Clock"
+      selector:
+        entity:
+          domain: light
+    light_11:
+      name: "11 O'Clock"
+      selector:
+        entity:
+          domain: light
+
+    # ── Hand Colors ───────────────────────────────────────────────────
+    hour_color:
+      name: "Hour Hand Color"
+      description: "Color for the light representing the current hour"
+      default: [255, 0, 0]
+      selector:
+        color_rgb:
+    minute_color:
+      name: "Minute Hand Color"
+      description: "Color for the light representing the current 5-minute interval"
+      default: [0, 0, 255]
+      selector:
+        color_rgb:
+    overlap_color:
+      name: "Overlap Color"
+      description: "Color when both hands point to the same light"
+      default: [255, 0, 255]
+      selector:
+        color_rgb:
+    hand_brightness:
+      name: "Hand Brightness"
+      description: "Brightness for hour and minute hand lights"
+      default: 255
+      selector:
+        number:
+          min: 1
+          max: 255
+          mode: slider
+
+    # ── Background / Inactive Lights ──────────────────────────────────
+    background_mode:
+      name: "Inactive Light Mode"
+      description: >
+        Choose what happens to lights that are NOT showing a hand.
+        "Off" turns them off completely. "Dim" shows a subtle background
+        color so the full clock face is always visible.
+      default: "dim"
+      selector:
+        select:
+          options:
+            - label: "Turn Off"
+              value: "off"
+            - label: "Dim Background Color"
+              value: "dim"
+    background_color:
+      name: "Background Color"
+      description: "Color for inactive lights (only used when mode is Dim)"
+      default: [40, 30, 10]
+      selector:
+        color_rgb:
+    background_brightness:
+      name: "Background Brightness"
+      description: "Brightness for inactive lights (only used when mode is Dim)"
+      default: 20
+      selector:
+        number:
+          min: 1
+          max: 128
+          mode: slider
+
+# ── Triggers ────────────────────────────────────────────────────────
+trigger:
+  - platform: time_pattern
+    minutes: "/1"
+  - platform: homeassistant
+    event: start
+
+# ── Action ──────────────────────────────────────────────────────────
+action:
+  - variables:
+      # Map current time to clock positions (0 = 12 o'clock, 1 = 1 o'clock, etc.)
+      hour_pos: "{{ now().hour % 12 }}"
+      minute_pos: "{{ (now().minute // 5) % 12 }}"
+      # Ordered list: index 0 = 12 o'clock, index 1 = 1 o'clock, ...
+      clock_lights:
+        - !input light_12
+        - !input light_1
+        - !input light_2
+        - !input light_3
+        - !input light_4
+        - !input light_5
+        - !input light_6
+        - !input light_7
+        - !input light_8
+        - !input light_9
+        - !input light_10
+        - !input light_11
+      h_color: !input hour_color
+      m_color: !input minute_color
+      o_color: !input overlap_color
+      h_bright: !input hand_brightness
+      bg_mode: !input background_mode
+      bg_color: !input background_color
+      bg_bright: !input background_brightness
+
+  # Loop through all 12 positions and set each light
+  - repeat:
+      count: 12
+      sequence:
+        - variables:
+            idx: "{{ repeat.index - 1 }}"
+            is_hour: "{{ (idx | int) == (hour_pos | int) }}"
+            is_minute: "{{ (idx | int) == (minute_pos | int) }}"
+            this_light: "{{ clock_lights[idx | int] }}"
+
+        - choose:
+            # ── Both hands overlap on this light ──
+            - conditions:
+                - condition: template
+                  value_template: "{{ is_hour and is_minute }}"
+              sequence:
+                - action: light.turn_on
+                  target:
+                    entity_id: "{{ this_light }}"
+                  data:
+                    rgb_color: "{{ o_color }}"
+                    brightness: "{{ h_bright }}"
+
+            # ── Hour hand ──
+            - conditions:
+                - condition: template
+                  value_template: "{{ is_hour }}"
+              sequence:
+                - action: light.turn_on
+                  target:
+                    entity_id: "{{ this_light }}"
+                  data:
+                    rgb_color: "{{ h_color }}"
+                    brightness: "{{ h_bright }}"
+
+            # ── Minute hand ──
+            - conditions:
+                - condition: template
+                  value_template: "{{ is_minute }}"
+              sequence:
+                - action: light.turn_on
+                  target:
+                    entity_id: "{{ this_light }}"
+                  data:
+                    rgb_color: "{{ m_color }}"
+                    brightness: "{{ h_bright }}"
+
+          # ── Inactive light ──
+          default:
+            - choose:
+                - conditions:
+                    - condition: template
+                      value_template: "{{ bg_mode == 'dim' }}"
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ this_light }}"
+                      data:
+                        rgb_color: "{{ bg_color }}"
+                        brightness: "{{ bg_bright }}"
+              default:
+                - action: light.turn_off
+                  target:
+                    entity_id: "{{ this_light }}"
+
+mode: single
+max_exceeded: silent
