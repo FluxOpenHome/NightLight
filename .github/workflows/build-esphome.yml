@@ -132,11 +132,22 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Save built files so we can replay on top of latest main
+          cp -r firmware/ /tmp/firmware-build
+          cp manifest.json /tmp/manifest-build.json
+
+          # Fast-forward to whatever main looks like right now
+          git fetch origin main
+          git reset --hard origin/main
+
+          # Drop our built files back in and commit
+          cp -r /tmp/firmware-build/* firmware/
+          cp /tmp/manifest-build.json manifest.json
           git add firmware/ manifest.json
           git diff --cached --quiet || git commit -m "Build: ${NAME} factory bin v${VERSION} [skip ci]
 
           Auto-built from ${{ github.sha }}"
-          git pull --rebase origin main
           git push
         env:
           NAME: ${{ matrix.device.name }}
